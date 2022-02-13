@@ -4,6 +4,7 @@ import { CreateBoardDto } from './dto/create-board.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BoardRepository } from './board.repository';
 import { Board } from './board.entity';
+import { User } from 'src/auth/user.entity';
 
 @Injectable()
 export class BoardsService {
@@ -12,12 +13,17 @@ export class BoardsService {
     private boardRepository: BoardRepository,
   ) {}
 
-  async getAllBoards(): Promise<Board[]> {
-    return await this.boardRepository.find();
+  async getAllBoards(user: User): Promise<Board[]> {
+    const boards = this.boardRepository
+      .createQueryBuilder('board')
+      .where('board.userId = :userId', { userId: user.id })
+      .getMany();
+
+    return boards;
   }
 
-  createBoard(createBoardDto: CreateBoardDto): Promise<Board> {
-    return this.boardRepository.createBoard(createBoardDto);
+  createBoard(createBoardDto: CreateBoardDto, user: User): Promise<Board> {
+    return this.boardRepository.createBoard(createBoardDto, user);
   }
 
   async getBoardById(id: number): Promise<Board> {
@@ -29,8 +35,8 @@ export class BoardsService {
     return found;
   }
 
-  async deleteBoard(id: number): Promise<void> {
-    const result = await this.boardRepository.delete(id);
+  async deleteBoard(id: number, user: User): Promise<void> {
+    const result = await this.boardRepository.delete({ id, user });
 
     if (result.affected === 0) {
       throw new NotFoundException(`Can't find board with id ${id}`);
